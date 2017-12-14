@@ -56,33 +56,32 @@
 /* USER CODE END Includes */
 
 /* Private variables ---------------------------------------------------------*/
-TIM_HandleTypeDef htim2;
-TIM_HandleTypeDef htim22;
+TIM_HandleTypeDef htim2;  // declaration of timer 2 struct
+TIM_HandleTypeDef htim22;  // declaration of timer 22 struct
 
-TSC_HandleTypeDef htsc;
+TSC_HandleTypeDef htsc;  // declaration of touch sentor
 
-osThreadId defaultTaskHandle;
+osThreadId defaultTaskHandle;   // declaration of thread id
 
 /* USER CODE BEGIN PV */
 /* Private variables ---------------------------------------------------------*/
-volatile int i;
-static uint32_t pulseVal = 1600;
-TSC_HandleTypeDef TscHandle;
+volatile uint8_t buttonState; // variable used as iterator of state machine, range: 0-2
+static uint32_t pulseVal = 1600;  // duty cycle of PWM
+// defines used for checking the touch sensor state and position
 #define LINEAR_DETECT ((MyLinRots[0].p_Data->StateId == TSL_STATEID_DETECT) || \
                        (MyLinRots[0].p_Data->StateId == TSL_STATEID_DEB_RELEASE_DETECT))
 #define LINEAR_POSITION (MyLinRots[0].p_Data->Position)
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
+// functions initializing peripherals
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_TIM2_Init(void);
 static void MX_TIM22_Init(void);
 static void MX_TSC_Init(void);
-void StartDefaultTask(void const * argument);                                    
-void HAL_TIM_MspPostInit(TIM_HandleTypeDef *htim);
-                                
-                                
+void StartDefaultTask(void const * argument);  // main thread function
+void HAL_TIM_MspPostInit(TIM_HandleTypeDef *htim);  // function mapping GPIO to timers
 
 /* USER CODE BEGIN PFP */
 /* Private function prototypes -----------------------------------------------*/
@@ -215,8 +214,7 @@ void SystemClock_Config(void)
     */
   HAL_SYSTICK_Config(HAL_RCC_GetHCLKFreq()/1000);
 
-    /**Configure the Systick 
-    */
+    /**Configure the Systick */
   HAL_SYSTICK_CLKSourceConfig(SYSTICK_CLKSOURCE_HCLK);
 
   /* SysTick_IRQn interrupt configuration */
@@ -473,14 +471,15 @@ void StartDefaultTask(void const * argument)
 
   /* USER CODE BEGIN 5 */
   TIM_OC_InitTypeDef sConfigOC;
-  tsl_user_status_t tsl_status;
+  tsl_user_status_t tsl_status;  // enum defining of touch sensor
   
   /* Infinite loop */
   for(;;)
   {
-    tsl_status = tsl_user_Exec();
-    if (tsl_status != TSL_USER_STATUS_BUSY)
+    tsl_status = tsl_user_Exec();  // fetching data from sensor and returning its state
+    if (tsl_status != TSL_USER_STATUS_BUSY)  // checking if sensor is not busy
     {
+// enabling brightness based on position of touch sensor
       if (LINEAR_DETECT)
       {
         if (LINEAR_POSITION <= 4)
@@ -499,19 +498,19 @@ void StartDefaultTask(void const * argument)
         {
           pulseVal = 1600;
         }
-    
+// setting of PWM duty cycles for both diodes        
         HAL_TIM_PWM_Stop(&htim2, TIM_CHANNEL_1);
         HAL_TIM_PWM_Stop(&htim22, TIM_CHANNEL_1);
         sConfigOC.OCMode = TIM_OCMODE_PWM1;
         sConfigOC.Pulse = pulseVal;
         sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
         sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
-        if (HAL_TIM_PWM_ConfigChannel(&htim2, &sConfigOC, TIM_CHANNEL_1) != HAL_OK){}
-        if (HAL_TIM_PWM_ConfigChannel(&htim22, &sConfigOC, TIM_CHANNEL_1) != HAL_OK){}
+        HAL_TIM_PWM_ConfigChannel(&htim2, &sConfigOC, TIM_CHANNEL_1);
+        HAL_TIM_PWM_ConfigChannel(&htim22, &sConfigOC, TIM_CHANNEL_1);
       }
     }
-    
-    switch (i%3)
+// main state machine for enabling diodes based on pressed button 
+    switch (buttonState%3)
     {
       case 0:                                         // enabling green diode 
         HAL_TIM_PWM_Stop(&htim2, TIM_CHANNEL_1);
@@ -562,8 +561,7 @@ void _Error_Handler(char * file, int line)
 void assert_failed(uint8_t* file, uint32_t line)
 {
   /* USER CODE BEGIN 6 */
-  /* User can add his own implementation to report the file name and line number*/
-  printf("Wrong parameters value: file %s on line %d\r\n", file, line) */
+  printf("Wrong parameters value: file %s on line %d\r\n", file, line);
   /* USER CODE END 6 */
 }
 
@@ -576,5 +574,4 @@ void assert_failed(uint8_t* file, uint32_t line)
 /**
   * @}
 */ 
-
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

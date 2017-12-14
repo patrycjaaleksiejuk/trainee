@@ -37,7 +37,7 @@
 #include "cmsis_os.h"
 
 /* USER CODE BEGIN 0 */
-extern volatile int i;
+extern volatile uint8_t buttonState;
 /* USER CODE END 0 */
 
 /* External variables --------------------------------------------------------*/
@@ -74,10 +74,10 @@ void SysTick_Handler(void)
 void EXTI0_1_IRQHandler(void)
 {
   /* USER CODE BEGIN EXTI0_1_IRQn 0 */
-	if(__HAL_GPIO_EXTI_GET_FLAG(B1_Pin))
-	{
-		i++;
-	}
+  if(__HAL_GPIO_EXTI_GET_FLAG(B1_Pin))  // if button is pressed then buttonState is increment
+  {
+    buttonState++;
+  }
   /* USER CODE END EXTI0_1_IRQn 0 */
   HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_0);
   /* USER CODE BEGIN EXTI0_1_IRQn 1 */

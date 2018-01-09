@@ -9,7 +9,7 @@
   * inserted by the user or by software development tools
   * are owned by their respective copyright owners.
   *
-  * Copyright (c) 2017 STMicroelectronics International N.V. 
+  * Copyright (c) 2018 STMicroelectronics International N.V. 
   * All rights reserved.
   *
   * Redistribution and use in source and binary forms, with or without 
@@ -50,23 +50,22 @@
 #include "main.h"
 #include "stm32l0xx_hal.h"
 #include "cmsis_os.h"
+#include "spi.h"
+#include "tim.h"
+#include "tsc.h"
+#include "gpio.h"
 
 /* USER CODE BEGIN Includes */
 #include "tsl_user.h"
+#include "lcd.h"
 /* USER CODE END Includes */
 
 /* Private variables ---------------------------------------------------------*/
-TIM_HandleTypeDef htim2;  // declaration of timer 2 struct
-TIM_HandleTypeDef htim22;  // declaration of timer 22 struct
-
-TSC_HandleTypeDef htsc;  // declaration of touch sentor
-
-osThreadId defaultTaskHandle;   // declaration of thread id
 
 /* USER CODE BEGIN PV */
 /* Private variables ---------------------------------------------------------*/
-volatile uint8_t buttonState; // variable used as iterator of state machine, range: 0-2
-static uint32_t pulseVal = 1600;  // duty cycle of PWM
+
+
 // defines used for checking the touch sensor state and position
 #define LINEAR_DETECT ((MyLinRots[0].p_Data->StateId == TSL_STATEID_DETECT) || \
                        (MyLinRots[0].p_Data->StateId == TSL_STATEID_DEB_RELEASE_DETECT))
@@ -74,14 +73,8 @@ static uint32_t pulseVal = 1600;  // duty cycle of PWM
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
-// functions initializing peripherals
 void SystemClock_Config(void);
-static void MX_GPIO_Init(void);
-static void MX_TIM2_Init(void);
-static void MX_TIM22_Init(void);
-static void MX_TSC_Init(void);
-void StartDefaultTask(void const * argument);  // main thread function
-void HAL_TIM_MspPostInit(TIM_HandleTypeDef *htim);  // function mapping GPIO to timers
+void MX_FREERTOS_Init(void);
 
 /* USER CODE BEGIN PFP */
 /* Private function prototypes -----------------------------------------------*/
@@ -120,37 +113,17 @@ int main(void)
   MX_TIM2_Init();
   MX_TIM22_Init();
   MX_TSC_Init();
+  MX_SPI2_Init();
 
   /* USER CODE BEGIN 2 */
   /* Initialize the STMTouch driver */
   tsl_user_Init();
+  lcd_Init();
+
   /* USER CODE END 2 */
 
-  /* USER CODE BEGIN RTOS_MUTEX */
-  /* add mutexes, ... */
-  /* USER CODE END RTOS_MUTEX */
-
-  /* USER CODE BEGIN RTOS_SEMAPHORES */
-  /* add semaphores, ... */
-  /* USER CODE END RTOS_SEMAPHORES */
-
-  /* USER CODE BEGIN RTOS_TIMERS */
-  /* start timers, add new ones, ... */
-  /* USER CODE END RTOS_TIMERS */
-
-  /* Create the thread(s) */
-  /* definition and creation of defaultTask */
-  osThreadDef(defaultTask, StartDefaultTask, osPriorityNormal, 0, 128);
-  defaultTaskHandle = osThreadCreate(osThread(defaultTask), NULL);
-
-  /* USER CODE BEGIN RTOS_THREADS */
-  /* add threads, ... */
-  /* USER CODE END RTOS_THREADS */
-
-  /* USER CODE BEGIN RTOS_QUEUES */
-  /* add queues, ... */
-  /* USER CODE END RTOS_QUEUES */
- 
+  /* Call init function for freertos objects (in freertos.c) */
+  MX_FREERTOS_Init();
 
   /* Start scheduler */
   osKernelStart();
@@ -189,8 +162,8 @@ void SystemClock_Config(void)
   RCC_OscInitStruct.HSICalibrationValue = 16;
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
   RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSI;
-  RCC_OscInitStruct.PLL.PLLMUL = RCC_PLLMUL_3;
-  RCC_OscInitStruct.PLL.PLLDIV = RCC_PLLDIV_3;
+  RCC_OscInitStruct.PLL.PLLMUL = RCC_PLLMUL_4;
+  RCC_OscInitStruct.PLL.PLLDIV = RCC_PLLDIV_2;
   if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
   {
     _Error_Handler(__FILE__, __LINE__);
@@ -205,7 +178,7 @@ void SystemClock_Config(void)
   RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV1;
   RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
 
-  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_0) != HAL_OK)
+  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_1) != HAL_OK)
   {
     _Error_Handler(__FILE__, __LINE__);
   }
@@ -214,327 +187,17 @@ void SystemClock_Config(void)
     */
   HAL_SYSTICK_Config(HAL_RCC_GetHCLKFreq()/1000);
 
-    /**Configure the Systick */
+    /**Configure the Systick 
+    */
   HAL_SYSTICK_CLKSourceConfig(SYSTICK_CLKSOURCE_HCLK);
 
   /* SysTick_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(SysTick_IRQn, 3, 0);
 }
 
-/* TIM2 init function */
-static void MX_TIM2_Init(void)
-{
-
-  TIM_ClockConfigTypeDef sClockSourceConfig;
-  TIM_MasterConfigTypeDef sMasterConfig;
-  TIM_OC_InitTypeDef sConfigOC;
-
-  htim2.Instance = TIM2;
-  htim2.Init.Prescaler = 0;
-  htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim2.Init.Period = 1600;
-  htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
-  if (HAL_TIM_Base_Init(&htim2) != HAL_OK)
-  {
-    _Error_Handler(__FILE__, __LINE__);
-  }
-
-  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
-  if (HAL_TIM_ConfigClockSource(&htim2, &sClockSourceConfig) != HAL_OK)
-  {
-    _Error_Handler(__FILE__, __LINE__);
-  }
-
-  if (HAL_TIM_PWM_Init(&htim2) != HAL_OK)
-  {
-    _Error_Handler(__FILE__, __LINE__);
-  }
-
-  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
-  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
-  if (HAL_TIMEx_MasterConfigSynchronization(&htim2, &sMasterConfig) != HAL_OK)
-  {
-    _Error_Handler(__FILE__, __LINE__);
-  }
-
-  sConfigOC.OCMode = TIM_OCMODE_PWM1;
-  sConfigOC.Pulse = 500;
-  sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
-  sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
-  if (HAL_TIM_PWM_ConfigChannel(&htim2, &sConfigOC, TIM_CHANNEL_1) != HAL_OK)
-  {
-    _Error_Handler(__FILE__, __LINE__);
-  }
-
-  HAL_TIM_MspPostInit(&htim2);
-
-}
-
-/* TIM22 init function */
-static void MX_TIM22_Init(void)
-{
-
-  TIM_ClockConfigTypeDef sClockSourceConfig;
-  TIM_MasterConfigTypeDef sMasterConfig;
-  TIM_OC_InitTypeDef sConfigOC;
-
-  htim22.Instance = TIM22;
-  htim22.Init.Prescaler = 0;
-  htim22.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim22.Init.Period = 1600;
-  htim22.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
-  if (HAL_TIM_Base_Init(&htim22) != HAL_OK)
-  {
-    _Error_Handler(__FILE__, __LINE__);
-  }
-
-  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
-  if (HAL_TIM_ConfigClockSource(&htim22, &sClockSourceConfig) != HAL_OK)
-  {
-    _Error_Handler(__FILE__, __LINE__);
-  }
-
-  if (HAL_TIM_PWM_Init(&htim22) != HAL_OK)
-  {
-    _Error_Handler(__FILE__, __LINE__);
-  }
-
-  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
-  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
-  if (HAL_TIMEx_MasterConfigSynchronization(&htim22, &sMasterConfig) != HAL_OK)
-  {
-    _Error_Handler(__FILE__, __LINE__);
-  }
-
-  sConfigOC.OCMode = TIM_OCMODE_PWM1;
-  sConfigOC.Pulse = 500;
-  sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
-  sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
-  if (HAL_TIM_PWM_ConfigChannel(&htim22, &sConfigOC, TIM_CHANNEL_1) != HAL_OK)
-  {
-    _Error_Handler(__FILE__, __LINE__);
-  }
-
-  HAL_TIM_MspPostInit(&htim22);
-
-}
-
-/* TSC init function */
-static void MX_TSC_Init(void)
-{
-
-    /**Configure the TSC peripheral 
-    */
-  htsc.Instance = TSC;
-  htsc.Init.CTPulseHighLength = TSC_CTPH_2CYCLES;
-  htsc.Init.CTPulseLowLength = TSC_CTPL_2CYCLES;
-  htsc.Init.SpreadSpectrum = DISABLE;
-  htsc.Init.SpreadSpectrumDeviation = 1;
-  htsc.Init.SpreadSpectrumPrescaler = TSC_SS_PRESC_DIV1;
-  htsc.Init.PulseGeneratorPrescaler = TSC_PG_PRESC_DIV2;
-  htsc.Init.MaxCountValue = TSC_MCV_8191;
-  htsc.Init.IODefaultMode = TSC_IODEF_OUT_PP_LOW;
-  htsc.Init.SynchroPinPolarity = TSC_SYNC_POLARITY_FALLING;
-  htsc.Init.AcquisitionMode = TSC_ACQ_MODE_NORMAL;
-  htsc.Init.MaxCountInterrupt = DISABLE;
-  htsc.Init.ChannelIOs = TSC_GROUP1_IO3|TSC_GROUP2_IO3|TSC_GROUP3_IO2;
-  htsc.Init.SamplingIOs = TSC_GROUP1_IO4|TSC_GROUP2_IO4|TSC_GROUP3_IO3;
-  if (HAL_TSC_Init(&htsc) != HAL_OK)
-  {
-    _Error_Handler(__FILE__, __LINE__);
-  }
-
-}
-
-/** Configure pins as 
-        * Analog 
-        * Input 
-        * Output
-        * EVENT_OUT
-        * EXTI
-     PB12   ------> SPI2_NSS
-     PB13   ------> SPI2_SCK
-     PB14   ------> SPI2_MISO
-     PB15   ------> SPI2_MOSI
-     PA9   ------> USART1_TX
-     PA10   ------> USART1_RX
-     PA15   ------> SPI1_NSS
-     PB3   ------> SPI1_SCK
-     PB5   ------> SPI1_MOSI
-     PB8   ------> I2C1_SCL
-     PB9   ------> I2C1_SDA
-*/
-static void MX_GPIO_Init(void)
-{
-
-  GPIO_InitTypeDef GPIO_InitStruct;
-
-  /* GPIO Ports Clock Enable */
-  __HAL_RCC_GPIOC_CLK_ENABLE();
-  __HAL_RCC_GPIOH_CLK_ENABLE();
-  __HAL_RCC_GPIOA_CLK_ENABLE();
-  __HAL_RCC_GPIOB_CLK_ENABLE();
-
-  /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_RESET);
-
-  /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_10|GPIO_PIN_11, GPIO_PIN_RESET);
-
-  /*Configure GPIO pin : PC13 */
-  GPIO_InitStruct.Pin = GPIO_PIN_13;
-  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
-
-  /*Configure GPIO pin : B1_Pin */
-  GPIO_InitStruct.Pin = B1_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  HAL_GPIO_Init(B1_GPIO_Port, &GPIO_InitStruct);
-
-  /*Configure GPIO pins : PA1 PA8 */
-  GPIO_InitStruct.Pin = GPIO_PIN_1|GPIO_PIN_8;
-  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
-
-  /*Configure GPIO pin : PA4 */
-  GPIO_InitStruct.Pin = GPIO_PIN_4;
-  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
-
-  /*Configure GPIO pins : PB10 PB11 */
-  GPIO_InitStruct.Pin = GPIO_PIN_10|GPIO_PIN_11;
-  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
-
-  /*Configure GPIO pins : PB12 PB13 PB14 PB15 */
-  GPIO_InitStruct.Pin = GPIO_PIN_12|GPIO_PIN_13|GPIO_PIN_14|GPIO_PIN_15;
-  GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
-  GPIO_InitStruct.Alternate = GPIO_AF0_SPI2;
-  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
-
-  /*Configure GPIO pins : PA9 PA10 */
-  GPIO_InitStruct.Pin = GPIO_PIN_9|GPIO_PIN_10;
-  GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
-  GPIO_InitStruct.Alternate = GPIO_AF4_USART1;
-  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
-
-  /*Configure GPIO pin : PA15 */
-  GPIO_InitStruct.Pin = GPIO_PIN_15;
-  GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
-  GPIO_InitStruct.Alternate = GPIO_AF0_SPI1;
-  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
-
-  /*Configure GPIO pins : PB3 PB5 */
-  GPIO_InitStruct.Pin = GPIO_PIN_3|GPIO_PIN_5;
-  GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
-  GPIO_InitStruct.Alternate = GPIO_AF0_SPI1;
-  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
-
-  /*Configure GPIO pins : PB8 PB9 */
-  GPIO_InitStruct.Pin = GPIO_PIN_8|GPIO_PIN_9;
-  GPIO_InitStruct.Mode = GPIO_MODE_AF_OD;
-  GPIO_InitStruct.Pull = GPIO_PULLUP;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
-  GPIO_InitStruct.Alternate = GPIO_AF4_I2C1;
-  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
-  
-  
-
-  /* EXTI interrupt init*/
-  HAL_NVIC_SetPriority(EXTI0_1_IRQn, 3, 0);
-  HAL_NVIC_EnableIRQ(EXTI0_1_IRQn);
-
-}
-
 /* USER CODE BEGIN 4 */
 
 /* USER CODE END 4 */
-
-/* StartDefaultTask function */
-void StartDefaultTask(void const * argument)
-{
-
-  /* USER CODE BEGIN 5 */
-  TIM_OC_InitTypeDef sConfigOC;
-  tsl_user_status_t tsl_status;  // enum defining of touch sensor
-  
-  /* Infinite loop */
-  for(;;)
-  {
-    tsl_status = tsl_user_Exec();  // fetching data from sensor and returning its state
-    if (tsl_status != TSL_USER_STATUS_BUSY)  // checking if sensor is not busy
-    {
-// enabling brightness based on position of touch sensor
-      if (LINEAR_DETECT)
-      {
-        if (LINEAR_POSITION <= 4)
-        {
-          pulseVal = 200;
-        }
-        else if (LINEAR_POSITION <= 8)
-        {
-          pulseVal = 800;
-        }
-        else if (LINEAR_POSITION <= 12)
-        {
-          pulseVal = 1200;
-        }
-        else
-        {
-          pulseVal = 1600;
-        }
-// setting of PWM duty cycles for both diodes        
-        HAL_TIM_PWM_Stop(&htim2, TIM_CHANNEL_1);
-        HAL_TIM_PWM_Stop(&htim22, TIM_CHANNEL_1);
-        sConfigOC.OCMode = TIM_OCMODE_PWM1;
-        sConfigOC.Pulse = pulseVal;
-        sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
-        sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
-        HAL_TIM_PWM_ConfigChannel(&htim2, &sConfigOC, TIM_CHANNEL_1);
-        HAL_TIM_PWM_ConfigChannel(&htim22, &sConfigOC, TIM_CHANNEL_1);
-      }
-    }
-// main state machine for enabling diodes based on pressed button 
-    switch (buttonState%3)
-    {
-      case 0:                                         // enabling green diode 
-        HAL_TIM_PWM_Stop(&htim2, TIM_CHANNEL_1);
-        HAL_TIM_PWM_Start(&htim22, TIM_CHANNEL_1);
-      break;
-      
-      case 1:                                         // enabling red diode
-        HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_1);
-        HAL_TIM_PWM_Stop(&htim22, TIM_CHANNEL_1);
-      break;
-       
-      case 2:                                         // enabling both diodes
-        HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_1);
-        HAL_TIM_PWM_Start(&htim22, TIM_CHANNEL_1);
-      break;
-      
-      default:
-        assert_param(0);
-      break;
-    }
-    osDelay(1);
-  }
-  /* USER CODE END 5 */ 
-}
 
 /**
   * @brief  This function is executed in case of error occurrence.
@@ -563,6 +226,7 @@ void assert_failed(uint8_t* file, uint32_t line)
   /* USER CODE BEGIN 6 */
   printf("Wrong parameters value: file %s on line %d\r\n", file, line);
   /* USER CODE END 6 */
+
 }
 
 #endif
@@ -574,4 +238,5 @@ void assert_failed(uint8_t* file, uint32_t line)
 /**
   * @}
 */ 
+
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

@@ -1,8 +1,7 @@
 /**
   ******************************************************************************
-  * File Name          : stm32l0xx_hal_msp.c
-  * Description        : This file provides code for the MSP Initialization 
-  *                      and de-Initialization codes.
+  * File Name          : main.hpp
+  * Description        : This file contains the common defines of the application
   ******************************************************************************
   * This notice applies to any and all portions of this file
   * that are not between comment pairs USER CODE BEGIN and
@@ -46,48 +45,71 @@
   *
   ******************************************************************************
   */
+/* Define to prevent recursive inclusion -------------------------------------*/
+#ifndef __MAIN_H
+#define __MAIN_H
+  /* Includes ------------------------------------------------------------------*/
+
 /* Includes ------------------------------------------------------------------*/
-#include "stm32l0xx_hal.h"
+/* USER CODE BEGIN Includes */
 
-extern void _Error_Handler(char *, int);
-/* USER CODE BEGIN 0 */
+/* USER CODE END Includes */
 
-/* USER CODE END 0 */
+/* Private define ------------------------------------------------------------*/
+
+#define B1_Pin GPIO_PIN_0
+#define B1_GPIO_Port GPIOA
+#define B1_EXTI_IRQn EXTI0_1_IRQn
+#define LED_RED_Pin GPIO_PIN_5
+#define LED_RED_GPIO_Port GPIOA
+#define SPI2_CS_Pin GPIO_PIN_12
+#define SPI2_CS_GPIO_Port GPIOB
+#define NFC_SCK_Pin GPIO_PIN_13
+#define NFC_SCK_GPIO_Port GPIOB
+#define SPI2_DC_Pin GPIO_PIN_14
+#define SPI2_DC_GPIO_Port GPIOB
+#define NFC_MOSI_Pin GPIO_PIN_15
+#define NFC_MOSI_GPIO_Port GPIOB
+#define LED_GREEN_Pin GPIO_PIN_4
+#define LED_GREEN_GPIO_Port GPIOB
+
+/* ########################## Assert Selection ############################## */
 /**
-  * Initializes the Global MSP.
+  * @brief Uncomment the line below to expanse the "assert_param" macro in the 
+  *        HAL drivers code
   */
-void HAL_MspInit(void)
+/* #define USE_FULL_ASSERT    1U */
+
+/* USER CODE BEGIN Private defines */
+
+typedef enum 
 {
-  /* USER CODE BEGIN MspInit 0 */
+  greenDiode = 0,
+  redDiode,
+  bothDiode,
+  moveScreen,
+  maxState
+} diodeState;
 
-  /* USER CODE END MspInit 0 */
+/* USER CODE END Private defines */
 
-  __HAL_RCC_SYSCFG_CLK_ENABLE();
-  __HAL_RCC_PWR_CLK_ENABLE();
+#ifdef __cplusplus
+ extern "C" {
+#endif
+void _Error_Handler(char *, int);
 
-  /* System interrupt init*/
-  /* SVC_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(SVC_IRQn, 0, 0);
-  /* PendSV_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(PendSV_IRQn, 3, 0);
-  /* SysTick_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(SysTick_IRQn, 3, 0);
-
-  /* USER CODE BEGIN MspInit 1 */
-
-  /* USER CODE END MspInit 1 */
+#define Error_Handler() _Error_Handler(__FILE__, __LINE__)
+#ifdef __cplusplus
 }
-
-/* USER CODE BEGIN 1 */
-
-/* USER CODE END 1 */
+#endif
 
 /**
   * @}
-  */
+  */ 
 
 /**
   * @}
-  */
+*/ 
 
+#endif /* __MAIN_H */
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

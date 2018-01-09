@@ -1,8 +1,8 @@
 /**
   ******************************************************************************
-  * File Name          : stm32l0xx_hal_msp.c
-  * Description        : This file provides code for the MSP Initialization 
-  *                      and de-Initialization codes.
+  * File Name          : TIM.h
+  * Description        : This file provides code for the configuration
+  *                      of the TIM instances.
   ******************************************************************************
   * This notice applies to any and all portions of this file
   * that are not between comment pairs USER CODE BEGIN and
@@ -46,41 +46,60 @@
   *
   ******************************************************************************
   */
+/* Define to prevent recursive inclusion -------------------------------------*/
+#ifndef __tim_H
+#define __tim_H
+#ifdef __cplusplus
+ extern "C" {
+#endif
+
 /* Includes ------------------------------------------------------------------*/
 #include "stm32l0xx_hal.h"
+#include "main.h"
+
+/* USER CODE BEGIN Includes */
+
+/* USER CODE END Includes */
+
+extern TIM_HandleTypeDef htim2;
+extern TIM_HandleTypeDef htim22;
+
+/* USER CODE BEGIN Private defines */
+
+/* USER CODE END Private defines */
 
 extern void _Error_Handler(char *, int);
-/* USER CODE BEGIN 0 */
 
-/* USER CODE END 0 */
-/**
-  * Initializes the Global MSP.
-  */
-void HAL_MspInit(void)
+void MX_TIM2_Init(void);
+void MX_TIM22_Init(void);
+                    
+void HAL_TIM_MspPostInit(TIM_HandleTypeDef *htim);
+                                
+
+/* USER CODE BEGIN Prototypes */
+inline void TIMx_EnableGreenDiodeMode(void)
 {
-  /* USER CODE BEGIN MspInit 0 */
-
-  /* USER CODE END MspInit 0 */
-
-  __HAL_RCC_SYSCFG_CLK_ENABLE();
-  __HAL_RCC_PWR_CLK_ENABLE();
-
-  /* System interrupt init*/
-  /* SVC_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(SVC_IRQn, 0, 0);
-  /* PendSV_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(PendSV_IRQn, 3, 0);
-  /* SysTick_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(SysTick_IRQn, 3, 0);
-
-  /* USER CODE BEGIN MspInit 1 */
-
-  /* USER CODE END MspInit 1 */
+  HAL_TIM_PWM_Stop(&htim2, TIM_CHANNEL_1);
+  HAL_TIM_PWM_Start(&htim22, TIM_CHANNEL_1);
 }
 
-/* USER CODE BEGIN 1 */
+inline void TIMx_EnableRedDiodeMode(void)
+{
+  HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_1);
+  HAL_TIM_PWM_Stop(&htim22, TIM_CHANNEL_1);
+}
 
-/* USER CODE END 1 */
+inline void TIMx_EnableBothDiodeMode(void)
+{
+  HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_1);
+  HAL_TIM_PWM_Start(&htim22, TIM_CHANNEL_1);
+}
+/* USER CODE END Prototypes */
+
+#ifdef __cplusplus
+}
+#endif
+#endif /*__ tim_H */
 
 /**
   * @}

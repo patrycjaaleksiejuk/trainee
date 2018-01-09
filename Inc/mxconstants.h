@@ -1,10 +1,10 @@
 /**
   ******************************************************************************
-  * @file    stm32l0xx_it.c
-  * @brief   Interrupt Service Routines.
+  * File Name          : mxconstants.h
+  * Description        : This file contains the common defines of the application
   ******************************************************************************
   *
-  * COPYRIGHT(c) 2018 STMicroelectronics
+  * COPYRIGHT(c) 2016 STMicroelectronics
   *
   * Redistribution and use in source and binary forms, with or without modification,
   * are permitted provided that the following conditions are met:
@@ -31,64 +31,33 @@
   ******************************************************************************
   */
 /* Includes ------------------------------------------------------------------*/
-#include "stm32l0xx_hal.h"
-#include "stm32l0xx.h"
-#include "stm32l0xx_it.h"
-#include "cmsis_os.h"
 
-/* USER CODE BEGIN 0 */
-extern volatile diodeState buttonState;
-extern volatile uint8_t isChanged;
-/* USER CODE END 0 */
+/* USER CODE BEGIN Includes */
 
-/* External variables --------------------------------------------------------*/
+/* USER CODE END Includes */
 
-/******************************************************************************/
-/*            Cortex-M0+ Processor Interruption and Exception Handlers         */ 
-/******************************************************************************/
+/* Private define ------------------------------------------------------------*/
 
-/**
-* @brief This function handles System tick timer.
-*/
-void SysTick_Handler(void)
-{
-  /* USER CODE BEGIN SysTick_IRQn 0 */
+#define SCK_Pin GPIO_PIN_5
+#define SCK_GPIO_Port GPIOA
+#define MOSI_Pin GPIO_PIN_7
+#define MOSI_GPIO_Port GPIOA
+#define CS_Pin GPIO_PIN_5
+#define CS_GPIO_Port GPIOC
+#define DC_Pin GPIO_PIN_1
+#define DC_GPIO_Port GPIOB
+#define RES_Pin GPIO_PIN_7
+#define RES_GPIO_Port GPIOE
+/* USER CODE BEGIN Private defines */
 
-  /* USER CODE END SysTick_IRQn 0 */
-  HAL_IncTick();
-  osSystickHandler();
-  /* USER CODE BEGIN SysTick_IRQn 1 */
-
-  /* USER CODE END SysTick_IRQn 1 */
-}
-
-/******************************************************************************/
-/* STM32L0xx Peripheral Interrupt Handlers                                    */
-/* Add here the Interrupt Handlers for the used peripherals.                  */
-/* For the available peripheral interrupt handler names,                      */
-/* please refer to the startup file (startup_stm32l0xx.s).                    */
-/******************************************************************************/
+/* USER CODE END Private defines */
 
 /**
-* @brief This function handles EXTI line 0 and line 1 interrupts.
-*/
-void EXTI0_1_IRQHandler(void)
-{
-  /* USER CODE BEGIN EXTI0_1_IRQn 0 */
-  if(__HAL_GPIO_EXTI_GET_FLAG(B1_Pin))  // if button is pressed then buttonState is increment
-  {
-    buttonState++;
-    buttonState %= maxState;
-    isChanged = pdTRUE;
-  }
-  /* USER CODE END EXTI0_1_IRQn 0 */
-  HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_0);
-  /* USER CODE BEGIN EXTI0_1_IRQn 1 */
+  * @}
+  */ 
 
-  /* USER CODE END EXTI0_1_IRQn 1 */
-}
+/**
+  * @}
+*/ 
 
-/* USER CODE BEGIN 1 */
-
-/* USER CODE END 1 */
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

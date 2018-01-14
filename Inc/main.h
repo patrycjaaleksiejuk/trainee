@@ -82,6 +82,7 @@
 
 /* USER CODE BEGIN Private defines */
 
+/* states of diodes */
 typedef enum 
 {
   greenDiode = 0,

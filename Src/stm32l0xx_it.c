@@ -75,7 +75,7 @@ void SysTick_Handler(void)
 void EXTI0_1_IRQHandler(void)
 {
   /* USER CODE BEGIN EXTI0_1_IRQn 0 */
-  if(__HAL_GPIO_EXTI_GET_FLAG(B1_Pin))  // if button is pressed then buttonState is increment
+  if(__HAL_GPIO_EXTI_GET_FLAG(B1_Pin))  /* if button is pressed then buttonState is increment */
   {
     buttonState++;
     buttonState %= maxState;
@@ -88,7 +88,4 @@ void EXTI0_1_IRQHandler(void)
   /* USER CODE END EXTI0_1_IRQn 1 */
 }
 
-/* USER CODE BEGIN 1 */
-
-/* USER CODE END 1 */
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

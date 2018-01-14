@@ -252,7 +252,19 @@ void HAL_TIM_Base_MspDeInit(TIM_HandleTypeDef* tim_baseHandle)
 } 
 
 /* USER CODE BEGIN 1 */
-
+/* setting of PWM duty cycles for both diodes */
+void PWM_setting(uint32_t pulseVal)
+{
+  TIM_OC_InitTypeDef sConfigOC;
+  HAL_TIM_PWM_Stop(&htim2, TIM_CHANNEL_1);
+  HAL_TIM_PWM_Stop(&htim22, TIM_CHANNEL_1);
+  sConfigOC.OCMode = TIM_OCMODE_PWM1;
+  sConfigOC.Pulse = pulseVal;
+  sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
+  sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
+  HAL_TIM_PWM_ConfigChannel(&htim2, &sConfigOC, TIM_CHANNEL_1);
+  HAL_TIM_PWM_ConfigChannel(&htim22, &sConfigOC, TIM_CHANNEL_1);
+}
 /* USER CODE END 1 */
 
 /**

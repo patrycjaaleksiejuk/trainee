@@ -55,20 +55,17 @@
 #include "tsl_user.h"
 #include "lcd.h"
 #include "tim.h"
+#include "tsc.h"
 /* USER CODE END Includes */
 
 /* Variables -----------------------------------------------------------------*/
 osThreadId defaultTaskHandle;
 
 /* USER CODE BEGIN Variables */
-volatile diodeState buttonState; /* variable used as iterator of state machine, range: 0-3 */
+volatile buttonState state; /* variable used as iterator of state machine, range: 0-3 */
 static uint32_t pulseVal = 1600;  /* duty cycle of PWM */
 volatile uint8_t isChanged = pdTRUE;  /* detection touching the touch sensor */
 
-/* defines used for checking the touch sensor state and position */
-#define LINEAR_DETECT ((MyLinRots[0].p_Data->StateId == TSL_STATEID_DETECT) || \
-                       (MyLinRots[0].p_Data->StateId == TSL_STATEID_DEB_RELEASE_DETECT))
-#define LINEAR_POSITION (MyLinRots[0].p_Data->Position)
 /* USER CODE END Variables */
 
 /* Function prototypes -------------------------------------------------------*/
@@ -90,7 +87,7 @@ void MX_FREERTOS_Init(void)
 void StartDefaultTask(void const * argument)
 {
   tsl_user_status_t tsl_status;  /* enum defining of touch sensor */
-  uint32_t move = 0;  /* shift the display */
+  uint32_t shiftColumn = 0;  /* shift the display */
   uint8_t color = 255;  /* set color for string */
   
   /* char tables for displaying strings */
@@ -111,24 +108,28 @@ void StartDefaultTask(void const * argument)
         if (LINEAR_POSITION <= 4)
         {
           pulseVal = 200;
+          shiftColumn = 0;
         }
         else if (LINEAR_POSITION <= 8)
         {
           pulseVal = 800;
+          shiftColumn = 2;
         }
         else if (LINEAR_POSITION <= 12)
         {
           pulseVal = 1200;
+          shiftColumn = 4;
         }
         else
         {
           pulseVal = 1600;
+          shiftColumn = 6;
         }
         PWM_setting(pulseVal);
       }
     }
 /* main state machine for enabling diodes based on pressed button */
-    switch (buttonState)
+    switch (state)
     {
       case greenDiode:                                        // enabling green diode 
         color = GREEN_COLOR;
@@ -146,8 +147,8 @@ void StartDefaultTask(void const * argument)
       break;
       
       case moveScreen:                                      // enabling moving screen
+        TIMx_DisableBothDiodes();
         color = WHITE_COLOR;
-        move = pulseVal / 20;
       break;
       
       default:
@@ -158,19 +159,21 @@ void StartDefaultTask(void const * argument)
     if (isChanged == pdTRUE)
     {
       /* detection state of the button */
-      if (buttonState == moveScreen)
+      if (state == moveScreen)
       {
         /* fill the display black color */
         hx8357_fillScreen(0, hx8357_LCD_PIXEL_WIDTH, hx8357_LCD_PIXEL_HEIGHT/5);
+        sprintf((char*)str, "PWM: %d%% ", 0);
       }
       else
       {
+        shiftColumn = 0;  /* no shifting in diodes state */
         sprintf((char*)str, "PWM: %d%% ", (int)pulseVal/16);
       }
       /* printing strings */
-      hx8357_putString(ch, sizeof(ch), 0, move, WHITE_COLOR);
-      hx8357_putString(colorName[buttonState], sizeof(colorName[buttonState]), 1, move, color);
-      hx8357_putString(str, sizeof(str), 2, move, WHITE_COLOR);
+      hx8357_putString(ch, sizeof(ch), 0, shiftColumn, WHITE_COLOR);
+      hx8357_putString(colorName[state], sizeof(colorName[state]), 1, shiftColumn, color);
+      hx8357_putString(str, sizeof(str), 2, shiftColumn, WHITE_COLOR);
       isChanged = pdFALSE;
     }
     osDelay(1);

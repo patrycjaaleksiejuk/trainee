@@ -90,7 +90,7 @@ typedef enum
   bothDiode,
   moveScreen,
   maxState
-} diodeState;
+} buttonState;
 
 /* USER CODE END Private defines */
 

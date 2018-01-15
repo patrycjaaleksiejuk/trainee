@@ -1,6 +1,6 @@
 #include "lcd.h"
 
-extern const uint8_t Grotesk16x32[6080];  /* font's table */
+extern const uint8_t fontGrotesk16x32[6080];  /* font's table */
 static uint8_t bitmap[16*32] = {0}; /* pixel's table */
 
 /* sending the data */
@@ -13,6 +13,7 @@ void hx8357_WriteMultipleData(uint8_t* data, uint16_t size)
   SPI2_DC_HIGH();
   
   HAL_SPI_Transmit(&hspi2, data, size, 100);
+  SPI2_CS_HIGH();
 }
 
 /* writing commands to the register */
@@ -256,19 +257,19 @@ void hx8357_SetDisplayWindow(uint16_t Xpos, uint16_t Ypos, uint16_t Width, uint1
   hx8357_WriteMultipleData(&data, 1);
 }
 /* clearing the display */
-void hx8357_fillScreen(uint8_t color, uint16_t Xpos, uint16_t Ypos)
+void hx8357_fillScreen(uint8_t color, uint16_t width, uint16_t height)
 {
-  hx8357_SetDisplayWindow(0, 0, Xpos, Ypos);
+  hx8357_SetDisplayWindow(0, 0, width, height);
   
-  for (int j = 0; j < Xpos; j++)
+  for (int j = 0; j < width; j++)
   {
     bitmap[j] = color;
   }
   /* begin writing to memory */
   hx8357_WriteReg(0x2C); 
-  for (int j = 0; j < Ypos; j++)
+  for (int j = 0; j < height; j++)
   {
-    hx8357_WriteMultipleData(&bitmap[0], Xpos);
+    hx8357_WriteMultipleData(&bitmap[0], width);
   }
   /* stop writing */
   hx8357_WriteReg(0x00);
@@ -284,7 +285,7 @@ void hx8357_putChar(uint16_t value, uint8_t color)
   {
      for (uint8_t j = 0; j < 8; j++)
      {
-       bitmap[count] = ((Grotesk16x32[i] << j) & 0x80) ? color : 0;
+       bitmap[count] = ((fontGrotesk16x32[i] << j) & 0x80) ? color : 0;
        count++;
      }
   }
@@ -294,12 +295,12 @@ void hx8357_putChar(uint16_t value, uint8_t color)
 }
 
 /* displaying the string on the screen */
-void hx8357_putString(char *ch, uint16_t size, uint16_t row, uint16_t move, uint8_t color)
+void hx8357_putString(char *ch, uint16_t size, uint16_t row, uint16_t shiftColumn, uint8_t color)
 {
   for( uint16_t i = 0; i < size; i++)
   {
    if (*(ch + i) == NULL) return; //check if this is the end of the string
-   hx8357_SetDisplayWindow(i*10 + move, row*32, 8, 32);
+   hx8357_SetDisplayWindow((i+shiftColumn)*10, row*32, 8, 32);
    hx8357_putChar(*(ch + i), color);
   }
 }

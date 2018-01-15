@@ -64,7 +64,10 @@
 extern TSC_HandleTypeDef htsc;
 
 /* USER CODE BEGIN Private defines */
-
+/* defines used for checking the touch sensor state and position */
+#define LINEAR_DETECT ((MyLinRots[0].p_Data->StateId == TSL_STATEID_DETECT) || \
+                       (MyLinRots[0].p_Data->StateId == TSL_STATEID_DEB_RELEASE_DETECT))
+#define LINEAR_POSITION (MyLinRots[0].p_Data->Position)
 /* USER CODE END Private defines */
 
 extern void _Error_Handler(char *, int);

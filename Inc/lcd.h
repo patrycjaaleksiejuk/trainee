@@ -21,7 +21,7 @@ void hx8357_WriteMultipleData(uint8_t* data, uint16_t size);
 void hx8357_WriteReg(uint8_t command);
 void hx8357IO_WriteComPar(uint8_t LCDReg, uint8_t LCDRegValue);
 void lcd_Init(void);
-void hx8357_fillScreen(uint8_t color, uint16_t Xpos, uint16_t Ypos);
+void hx8357_fillScreen(uint8_t color, uint16_t width, uint16_t height);
 void hx8357_SetDisplayWindow(uint16_t Xpos, uint16_t Ypos, uint16_t Width, uint16_t Height);
 void hx8357_putChar(uint16_t value, uint8_t color);
 void hx8357_putString(char *ch, uint16_t size, uint16_t row, uint16_t move, uint8_t color);

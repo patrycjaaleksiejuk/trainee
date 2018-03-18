@@ -57,10 +57,16 @@
 #include "stm32l0xx_hal.h"
 #include "main.h"
 
+/* USER CODE BEGIN Includes */
+
+/* USER CODE END Includes */
 
 extern TIM_HandleTypeDef htim2;
 extern TIM_HandleTypeDef htim22;
 
+/* USER CODE BEGIN Private defines */
+
+/* USER CODE END Private defines */
 
 extern void _Error_Handler(char *, int);
 

@@ -60,42 +60,89 @@
 
 /* Variables -----------------------------------------------------------------*/
 osThreadId defaultTaskHandle;
+osThreadId lcdRefreshHandle;
+osMessageQId pulseValQueHandle;
+osMessageQId shiftColQueHandle;
+osMessageQId colorQueHandle;
 
 /* USER CODE BEGIN Variables */
 volatile buttonState state; /* variable used as iterator of state machine, range: 0-3 */
-static uint32_t pulseVal = 1600;  /* duty cycle of PWM */
 volatile uint8_t isChanged = pdTRUE;  /* detection touching the touch sensor */
 
 /* USER CODE END Variables */
 
 /* Function prototypes -------------------------------------------------------*/
 void StartDefaultTask(void const * argument);
+void lcdStartTask(void const * argument);
 
 void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
 
+/* USER CODE BEGIN FunctionPrototypes */
+
+/* USER CODE END FunctionPrototypes */
+
+/* Hook prototypes */
+
 /* Init FreeRTOS */
 
-void MX_FREERTOS_Init(void)
-  {
+void MX_FREERTOS_Init(void) {
+  /* USER CODE BEGIN Init */
+       
+  /* USER CODE END Init */
+
+  /* USER CODE BEGIN RTOS_MUTEX */
+  /* add mutexes, ... */
+  /* USER CODE END RTOS_MUTEX */
+
+  /* USER CODE BEGIN RTOS_SEMAPHORES */
+  /* add semaphores, ... */
+  /* USER CODE END RTOS_SEMAPHORES */
+
+  /* USER CODE BEGIN RTOS_TIMERS */
+  /* start timers, add new ones, ... */
+  /* USER CODE END RTOS_TIMERS */
+
   /* Create the thread(s) */
   /* definition and creation of defaultTask */
   osThreadDef(defaultTask, StartDefaultTask, osPriorityNormal, 0, 128);
   defaultTaskHandle = osThreadCreate(osThread(defaultTask), NULL);
-  }
+
+  /* definition and creation of lcdRefresh */
+  osThreadDef(lcdRefresh, lcdStartTask, osPriorityNormal, 0, 128);
+  lcdRefreshHandle = osThreadCreate(osThread(lcdRefresh), NULL);
+
+  /* USER CODE BEGIN RTOS_THREADS */
+  /* add threads, ... */
+  /* USER CODE END RTOS_THREADS */
+
+  /* Create the queue(s) */
+  /* definition and creation of pulseValQue */
+  osMessageQDef(pulseValQue, 1, uint16_t);
+  pulseValQueHandle = osMessageCreate(osMessageQ(pulseValQue), NULL);
+
+  /* definition and creation of shiftColQue */
+  osMessageQDef(shiftColQue, 1, uint16_t);
+  shiftColQueHandle = osMessageCreate(osMessageQ(shiftColQue), NULL);
+
+  /* definition and creation of colorQue */
+  osMessageQDef(colorQue, 1, uint16_t);
+  colorQueHandle = osMessageCreate(osMessageQ(colorQue), NULL);
+
+  /* USER CODE BEGIN RTOS_QUEUES */
+  /* add queues, ... */
+  /* USER CODE END RTOS_QUEUES */
+}
 
 /* StartDefaultTask function */
 void StartDefaultTask(void const * argument)
 {
+
+  /* USER CODE BEGIN StartDefaultTask */
+  uint32_t pulseVal = 1600;  /* duty cycle of PWM */
   tsl_user_status_t tsl_status;  /* enum defining of touch sensor */
   uint32_t shiftColumn = 0;  /* shift the display */
   uint8_t color = 255;  /* set color for string */
   
-  /* char tables for displaying strings */
-  char ch[]="Controlled diode(s):"; 
-  char colorName[maxState][9]={"G R E E N", "R E D    ", "B O T H  ", "M O V E  "};
-  char str[17] = "PWM: 100%";
-
-  /* Infinite loop */
   for(;;)
   {
     tsl_status = tsl_user_Exec();  /* fetching data from sensor and returning its state */
@@ -155,7 +202,37 @@ void StartDefaultTask(void const * argument)
         assert_param(0);
       break;
     }
-/* detection touch sensor */
+    
+    xQueueSend(pulseValQueHandle, &pulseVal, 10);
+    xQueueSend(shiftColQueHandle, &shiftColumn, 10);
+    xQueueSend(colorQueHandle, &color, 10);
+    osDelay(1);
+  }
+  /* USER CODE END StartDefaultTask */
+}
+
+/* lcdStartTask function */
+void lcdStartTask(void const * argument)
+{
+  /* USER CODE BEGIN lcdStartTask */
+  uint32_t shiftColumn = 0;  /* shift the display */
+  uint8_t color = 255;  /* set color for string */
+  
+  /* char tables for displaying strings */
+  char ch[]="Controlled diode(s):"; 
+  char colorName[maxState][9]={"G R E E N", "R E D    ", "B O T H  ", "M O V E  "};
+  char str[17] = "PWM: 100%";
+  uint32_t pulseVal= 0;
+  
+  /* Infinite loop */
+
+  for(;;)
+  {
+    xQueueReceive(pulseValQueHandle, &pulseVal, 10);
+    xQueueReceive(shiftColQueHandle, &shiftColumn, 10);
+    xQueueReceive(colorQueHandle, &color, 10);
+
+    /* detection touch sensor */
     if (isChanged == pdTRUE)
     {
       /* detection state of the button */
@@ -176,10 +253,15 @@ void StartDefaultTask(void const * argument)
       hx8357_putString(str, sizeof(str), 2, shiftColumn, WHITE_COLOR);
       isChanged = pdFALSE;
     }
+    
+
     osDelay(1);
   }
-  /* USER CODE END StartDefaultTask */
+  /* USER CODE END lcdStartTask */
 }
 
+/* USER CODE BEGIN Application */
+     
+/* USER CODE END Application */
 
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/
